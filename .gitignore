@@ -1,0 +1,63 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Autoconf generated files
+Makefile
+autom4te.cache/
+*.log
+config.status
+
+# Test files
+*.test
+
+# gcov files
+*.gcno
+*.gcda
+*.gcov
+
+# llvm gcov files
+*.profraw
+
+# lcov files
+*.info
+coverage/
+
+# Documentaion
+documentation/
+
+# Codacy files
+coverage.xml
+codacy-coverage.json
+
+# Ignore generated binaries
+bin/

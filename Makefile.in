@@ -1,0 +1,69 @@
+PROGNAME = alex$(PROGPREFIX)
+OBJFILES = maze.o curses.o
+CXXFLAGS = @CXXFLAGS@
+CPPFLAGS = @CPPFLAGS@ @NCURSES_CFLAGS@ -Iinclude -DPROGNAME="\"$(PROGNAME)\""
+TESTFLAGS = @TESTFLAGS@
+LDFLAGS = @LDFLAGS@
+LXXFLAGS = @LIBS@ @NCURSES_LIBS@
+prefix = @prefix@
+
+ifeq ($(PROGNAME), alex.test)
+	CXXFLAGS += $(TESTFLAGS)
+	LXXFLAGS += -lcriterion
+	OBJFILES += test/maze.o
+else
+	OBJFILES += main.o
+endif
+
+VPATH = src:include
+vpath %.cpp src src/environment src/board src/synth
+vpath %.hpp include
+
+.PHONY: all clean install check-style coverage documentation test
+
+all: $(PROGNAME)
+	@mv $< bin/
+
+documentation:
+	@doxygen .doxy.cfg
+
+clean:
+	@find . -name "*.test" -delete
+	@find . -name "*.o" -delete
+	@find . -name "*.gc??" -delete
+	@find . -name "*.info" -delete
+	@find . -name "*.profraw" -delete
+	@find bin/ -type f -perm -u=x -delete
+
+love:
+	@echo '<3'
+
+friends:
+	@echo '^-^'
+
+check-style:
+	@ cppcheck --enable=warning,performance,portability --platform=unix64 src/
+
+test: bin/$(PROGNAME)
+	@TERM=xterm-256color ./$<
+
+$(PROGNAME): $(OBJFILES)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LXXFLAGS)
+
+coverage: test
+ifneq ($(CXX),g++)
+	@echo "Only g++ is supported for coverage generation!"
+	@exit 1
+endif
+	gcov -a -u -b -c src/*
+	lcov -c --directory . -o $(PROGNAME).info
+	lcov -e $(PROGNAME).info '$(CURDIR)/*' -o $(PROGNAME)_filter.info
+	lcov --summary $(PROGNAME)_filter.info
+	genhtml $(PROGNAME)_filter.info --output-directory coverage
+	gcovr -x -o coverage.xml -r .
+
+%.o: %.cpp %.hpp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ -c $<
+
+test/%.o: test/%.cpp %.hpp
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o $@ -c $<
