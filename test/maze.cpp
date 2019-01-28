@@ -27,11 +27,11 @@ Test(Maze, reward) {
 }
 
 Test(Maze, width) {
-	cr_expect(env->width() == WIDTH, "Expected 'width' to be fixed to WIDTH (16)");
+	cr_expect(env->width() == 16, "Expected 'width' to be fixed to 16");
 }
 
 Test(Maze, height) {
-	cr_expect(env->height() == HEIGHT, "Expected 'height' to be fixed to HEIGHT (10)");
+	cr_expect(env->height() == 10, "Expected 'height' to be fixed to 10");
 }
 
 Test(Maze, game_over) {

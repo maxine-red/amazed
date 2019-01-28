@@ -18,87 +18,76 @@
  */
 
 #include <iostream>
-using namespace std;
-
 #include "environment/maze.hpp"
 
-Maze::Maze() {
+Maze::Maze(int w, int h, char method) {
+   	_width = w; _height = h; x = w/2; y = h/2;
+	int i, n = w * h;
+	// create map vector
+	map.reserve(n);
+	for (i = 0; i < n; i++) {
+		map.push_back(0);
+	}
 	srand(time(NULL));
-	// Create a maze from a given starting point. This can even be changed to
-	// any other valid node/tile on the playfield!
-	process_node(x, y);
-	nodes[std::rand() % _width][std::rand() % _height] |= 0x40;
+	switch (method) {
+		case 'd': depth_first(x,  y); break;
+		case 'k': kruskal(); break;
+		case 'p': prim(); break;
+	}
+	// Take out all extra information, before continuing.
+	for (i = 0; i < n; i++) {
+		map[i] &= 0x0f;
+	}
+	reset(true);
 }
 
-bool Maze::act(unsigned short action) {
-	unsigned short do_action = valid_actions() & action;
-	bool valid = false, call_alex = false;
+unsigned short Maze::reset(bool with_reward) {
+	if (with_reward) {
+		reward_x = std::rand() % _width;
+		reward_y = std::rand() % _height;
+	}
+	x = _width / 2;
+	y = _height / 2;
+	return (x<<8)|y;
+}
+
+unsigned short Maze::act(unsigned char action) {
+	// test if action is valid
+	unsigned char do_action = valid_actions() & action;
 	switch (do_action) {
 		case 0x0000: break; // No action picked. Invalid move!
-		case 0x0001: y--; valid = true; break; // move up one step
-		case 0x0002: x++; valid = true; break; // move right one step
-		case 0x0004: y++; valid = true; break; // move down one step
-		case 0x0008: x--; valid = true; break; // move left one step
-		// Send out Alex to explore and better their help
-		case 0x8000: call_alex = true; valid = true; break;
+		case 0x0001: y--; break; // move up one step
+		case 0x0002: x++; break; // move right one step
+		case 0x0004: y++; break; // move down one step
+		case 0x0008: x--; break; // move left one step
 		default: break; // all other actions are invalid
 	}
-	if (valid && !call_alex) {
-		energy -= drain;
-		_reward = -0.1;
-	}
-	else if (valid && call_alex) {
-		energy -= 10;
-		_reward = 0;
-	}
-	if (energy < 0) {
-		energy = 0;
-	}
-	if (nodes[x][y] & 0x40) {
-		nodes[x][y] &= 0xbf;
-		nodes[std::rand() % _width][std::rand() % _height] |= 0x40;
-		energy += 200;
-		drain++;
-		_reward = 20;
-	}
-	else if (!energy) {
-		_game_over = true;
-	}
-	return valid;
+	return (x<<8)|y;
 }
 
-unsigned short Maze::valid_actions() {
-	return (nodes[x][y] & 0x0f) | 0x8000;
+unsigned char Maze::valid_actions() {
+	return (map_get(x, y) & 0x0f);
 }
 
-std::vector<unsigned int> Maze::state() {
-	std::vector<unsigned int> cstate;
-	cstate.reserve(3);
-	cstate.push_back(x);
-	cstate.push_back(y);
-	cstate.push_back(energy);
-	return cstate;
-}
-
-void Maze::process_node(int cx, int cy) {
+void Maze::depth_first(int cx, int cy) {
 	// set node visited
-	int nx = cx, ny = cy;
-	nodes[cx][cy] |= 0x30;
-	char *old_node = &nodes[cx][cy];
-	int i, r;
+	int nx = cx, ny = cy, i, r;
 	std::vector<char> dirs;
+	map_set(cx, cy, 0x30); // set current value visited
 	dirs.reserve(4);
 	// test if nodes around can be visited
 	for (i = 0; i < 4; i++) {
 		dirs.push_back(i);
 	}
+	// improve randomization
 	for (i = 0; i < 10; i++) {
 		std::random_shuffle(dirs.begin(), dirs.end());
 	}
+	// walk over all possible node directions and see if we can progress on any
 	while (!dirs.empty()) {
 		nx = cx; ny = cy; // Reset values, so stuff works.
 		r = dirs.back();
-		dirs.pop_back();
+		dirs.pop_back(); // remove last value, after fetching it
 		switch (r) {
 			case 0: ny = cy - 1; break;
 			case 1: nx = cx + 1; break;
@@ -106,10 +95,85 @@ void Maze::process_node(int cx, int cy) {
 			case 3: nx = cx - 1; break;
 		}
 		if (ny >= 0 && ny < _height && nx >= 0 && nx < _width &&
-			   	!(nodes[nx][ny] & 0x30)) {
-			*old_node |= 1<<r;
-			nodes[nx][ny] |= 0x30 | 1<<(r^2);
-			process_node(nx, ny);
+			   	!(map_get(nx, ny) & 0x30)) {
+			map_set(cx, cy, 1<<r);
+			map_set(nx, ny, (0x30 | 1<<(r^2)));
+			depth_first(nx, ny);
 		}
 	}
+}
+
+void Maze::kruskal() {
+	int i, u, n = _width * _height, wall, wx, wy, vx, vy, cell;
+	char dir;
+	std::vector<int> cells, walls;
+	cells.reserve(n);
+	walls.reserve(n*4);
+	for (i = 0; i < n*4; i++) {
+		if (i % 4 == 0) { cells.push_back(i / 4); }
+		walls.push_back(i);
+	}
+	std::random_shuffle(walls.begin(), walls.end());
+	for (i = 0; i < n*4; i++) {
+		wall = walls[i];
+		wy = (wall / 4) % _height;
+		wx = (wall / 4) / _height;
+		vy = wy; vx = wx;
+		dir = wall % 4;
+		switch (dir) {
+			case 0: vy = wy - 1; break;
+			case 1: vx = wx + 1; break;
+			case 2: vy = wy + 1; break;
+			case 3: vx = wx - 1; break;
+		}
+		if (vy >= 0 && vy < _height && vx >= 0 && vx < _width) {
+			if (cells[wx * _height + wy] != cells[vx * _height + vy]) {
+				cell = cells[vx * _height + vy];
+				map_set(wx, wy, 1<<dir);
+				map_set(vx, vy, 1<<(dir^2));
+				for (u = 0; u < n; u++) {
+					if (cells[u] == cell) {
+						cells[u] = cells[wx * _height + wy];
+					}
+				}
+			}
+		}
+	}
+}
+
+void Maze::prim() {
+	int i, wall, wx = x, wy = y, vx, vy;
+	char dir;
+	std::vector<int> walls;
+	walls.reserve(_width * _height * 4);
+	map_set(wx, wy, 0x10);
+	for (i = 0; i < 4; i++) {
+		walls.push_back((wx * _height + wy) * 4 + i);
+	}
+	do {
+		std::random_shuffle(walls.begin(), walls.end());
+		wall = walls.back();
+		walls.pop_back(); // remove last value, after fetching it
+		wy = (wall / 4) % _height;
+		wx = (wall / 4) / _height;
+		vy = wy; vx = wx;
+		dir = wall % 4;
+		switch (dir) {
+			case 0: vy = wy - 1; break;
+			case 1: vx = wx + 1; break;
+			case 2: vy = wy + 1; break;
+			case 3: vx = wx - 1; break;
+		}
+		if (vy >= 0 && vy < _height && vx >= 0 && vx < _width) {
+			if (!(map_get(vx, vy)&0x10)) {
+				map_set(wx, wy, 1<<dir);
+				map_set(vx, vy, 1<<(dir^2));
+				map_set(vx, vy, 0x10);
+				for (i = 0; i < 4; i++) {
+					walls.push_back((vx * _height + vy) * 4 + i);
+				}
+			}
+		}
+		
+	} while (!walls.empty());
 }

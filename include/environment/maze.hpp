@@ -26,9 +26,6 @@
 #ifndef MAZE_H
 #define iMAZE_H
 
-#define WIDTH	16
-#define HEIGHT	10
-
 /** @class Maze
  *
  * @brief Environment for the mazes based games.
@@ -41,18 +38,15 @@
  * Rules:
  * - legal actions are up, right, down, left
  * - actions, that would cause the player to move into a wall are illegal
- * - the player has a certain amount of energy (200)
+ * - the player starts with 300 energy
+ * - a player can have a maximum of 1,000 energy
  * - each step takes 1 energy
+ * - each second passed costs 1 energy
  * - if 0 energy is reached, the game is over
  * - if the power cell is reached
- *   - 20 reward are provided
- *   - 200 energy are recharged (no max cap)
- *   - power drain is increased by 1
- * - a player can dispatch Alex, this causes:
- *   - a flat drain of 10 energy
- *   - Alex to explore the maze and improve her helping role
- *   - this can be done at any time, but may cause a game over state if energy
- *   is >= 10
+ *   - 100 reward are provided
+ *   - 300 energy are added (until max cap is reached)
+ *   - power drain is increased by 1, every 15 seconds
  *
  * @author Maxine Michalski
  */
@@ -60,33 +54,30 @@ class Maze : public Environment {
 	public:
 		/** @brief initializer method
 		 *
-		 * This method setups a randomly generated maze, using a randomized
-		 * depth-first search algorithm.
+		 * This method setups the environment. Where the chosen algorithm is
+		 * used to create a maze and reward placements are done later.
 		 *
-		 * Some other setup are done too, like placing a power cell.
+		 * @param int w - Width of maze
+		 * @param int h - Height of maze
+		 * @param char method - Algorithm to create maze
+		 *
+		 * @notice Supported maze generation algorithms are
+		 * - randomized depth-first search ('d')
 		 */
-		Maze();
+		Maze(int w, int h, char method);
+		/** @see Environment::reset() */
+		unsigned short reset(bool with_reward);
 		/** @see Environment::act() */
-		bool act(unsigned short action);
-		/** @see Environment::width() */
-		unsigned int width() { return _width; };
-		/** @see Environment::height() */
-		unsigned int height() { return _height; };
+		unsigned short act(unsigned char action);
 		/** @see Environment::valid_actions() */
-		unsigned short valid_actions();
-		/** @see Environment::state() */
-		std::vector<unsigned int> state();
-		char *map() { return &nodes[0][0]; }
+		unsigned char valid_actions();
 	private:
 		/** @brief Randomized depth-first search algorithm */
-		void process_node(int x, int y);
-		int x = 0, y = 0;
-		int _width = WIDTH, _height = HEIGHT;
-		char nodes[WIDTH][HEIGHT];
-		int energy = 200, drain = 1;
+		void depth_first(int x, int y);
+		/** @brief Randomized Kruskal's algorithm */
+		void kruskal();
+		/** @brief Randomized Prim's algorithm */
+		void prim();
 };
-
-#undef WIDTH
-#undef HEIGHT
 
 #endif // MAZE_H

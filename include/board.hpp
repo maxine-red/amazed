@@ -34,6 +34,11 @@
 class Board {
 	public:
 		// virtual Board(Environment *env) = 0;
+		/** @brief Deconstructor for UIs
+		 *
+		 * This method makes sure, that decostruction of UIs is handled
+		 * properly.
+		 */
 		virtual ~Board() {};
 		/** @brief Test if system is capable of running this game.
 		 *
@@ -47,13 +52,31 @@ class Board {
 		 * @return Boolean that shows if this system is capable or not
 		 */
 		virtual bool capable() = 0;
-		virtual void setup() = 0;
+		/** @brief Setup UI
+		 *
+		 * A method that handles UI setup and accepts two parameters
+		 * @param[in] unsigned int w - Width of board, in tiles
+		 * @param[in] unsigned int h - Height of board, in tiles
+		 * @param[in] vector<char> m - Height of board, in tiles
+		 */
+		virtual void setup(unsigned int w, unsigned int h, std::vector<char> m) = 0;
+		/** @brief Update UI to show changes
+		 *
+		 * Updates the UI with current state changes.
+		 *
+		 */
 		virtual void update() = 0;
+		virtual void game_over() = 0;
 		virtual char get_input() = 0;
 		std::string error_message;
-		int score = 0;
+		char synth_help = ' ';
+		unsigned char px, py, rx, ry;
+		unsigned short  score;
+		unsigned int seconds, steps;
+		int energy, time_drain, step_drain;
 	protected:
-		Environment *env;
+		unsigned int width, height;
+		std::vector<char> map;
 };
 
 #endif // BOARD_H

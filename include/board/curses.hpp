@@ -28,11 +28,12 @@
 
 class CursesBoard : public Board {
 	public:
-		CursesBoard(Environment *e);
+		CursesBoard();
 		~CursesBoard();
 		bool capable();
-		void setup();
+		void setup(unsigned int w, unsigned int h, std::vector<char> m);
 		void update();
+		void game_over();
 		char get_input();
 	private:
 		void draw_stats();

@@ -21,9 +21,8 @@
 
 using namespace std;
 
-CursesBoard::CursesBoard(Environment *e) {
+CursesBoard::CursesBoard() {
 	initscr();
-	env = e;
 }
 
 CursesBoard::~CursesBoard() {
@@ -48,13 +47,14 @@ bool CursesBoard::capable() {
 	return true;
 }
 
-void CursesBoard::setup() {
-	unsigned int width = env->width(), height = env->height();
+void CursesBoard::setup(unsigned int w, unsigned int h, std::vector<char> m) {
+	width = w; height = h; map = m;
 	cbreak();
 	noecho();
 	curs_set(0);
 	keypad(stdscr, true);
 	start_color();
+	// Initialize colors neede to render board/stats
 	init_color(COLOR_WHITE, 309, 678, 1000);
 	init_color(COLOR_MAGENTA, 870, 0, 549);
 	init_color(COLOR_BLUE, 0, 462, 870);
@@ -62,8 +62,9 @@ void CursesBoard::setup() {
 	init_pair(1, COLOR_MAGENTA, COLOR_MAGENTA);
 	init_pair(2, COLOR_BLUE, COLOR_BLUE);
 	init_pair(3, COLOR_WHITE, COLOR_BLACK);
+	init_pair(4, COLOR_WHITE, COLOR_WHITE);
 	board_win = newwin(height*2+3,  width*2+3, 0, 0);
-	stats_win = newwin(height*2+3,  80-(width*2+3), 0, width*2+3);
+	stats_win = newwin(24-(height*2+3),  (width*2+3), height*2+3, 0);
 }
 
 
@@ -88,34 +89,68 @@ char CursesBoard::get_input() {
 }
 
 void CursesBoard::draw_stats() {
+	int i;
 	werase(stats_win);
-	wborder(stats_win, ' ', 0, 0, 0, ACS_HLINE, 0, ACS_HLINE, 0);
-	mvwprintw(stats_win, 3, 3, "Score: %d", score);
-	mvwprintw(stats_win, 5, 3, "Energy: %d", env->state()[2]);
-	if (env->game_over()) {
-		wattron(stats_win, A_BOLD);
-		mvwaddstr(stats_win, 9, 3, "Game Over!");
-		wattroff(stats_win, A_BOLD);
+	wborder(stats_win, 0, 0, ' ', 0, ACS_VLINE, ACS_VLINE, 0, 0);
+	for (i = 0; i < getmaxy(stats_win)-1; i++) {
+		mvwaddch(stats_win, i, 19, ACS_VLINE);
+		mvwaddch(stats_win, i, 42, ACS_VLINE);
+		mvwaddch(stats_win, i, 65, ACS_VLINE);
 	}
+	mvwaddch(stats_win, getmaxy(stats_win)-1, 19, ACS_BTEE);
+	mvwaddch(stats_win, getmaxy(stats_win)-1, 42, ACS_BTEE);
+	mvwaddch(stats_win, getmaxy(stats_win)-1, 65, ACS_BTEE);
+	mvwprintw(stats_win, 0, 1, "Score:  %d", score);
+	mvwaddstr(stats_win, 1, 1, "Energy: ");
+	for (i = 0; i < energy/2; i++) {
+		mvwaddch(stats_win, 1, 9+i, ACS_CKBOARD|COLOR_PAIR(4));
+	}
+	if (energy % 2) {
+		mvwaddch(stats_win, 1, 9+i++, ACS_CKBOARD|COLOR_PAIR(3));
+	}
+	mvwprintw(stats_win, 0, 20, "Time:  %02d:%02d", (seconds / 60) % 60,
+		   	seconds % 60);
+	mvwaddstr(stats_win, 1, 20, "Drain: ");
+	if (time_drain > 30) { time_drain = 30; }
+	for (i = 0; i < time_drain / 2; i++) {
+		mvwaddch(stats_win, 1, 27+i, ACS_CKBOARD|COLOR_PAIR(4));
+	}
+	if (time_drain % 2) {
+		mvwaddch(stats_win, 1, 27+i++, ACS_CKBOARD|COLOR_PAIR(3));
+	}
+	mvwprintw(stats_win, 0, 43, "Steps: %d", steps);
+	mvwaddstr(stats_win, 1, 43, "Drain: ");
+	if (step_drain > 30) { step_drain = 30; }
+	for (i = 0; i < step_drain / 2; i++) {
+		mvwaddch(stats_win, 1, 50+i, ACS_CKBOARD|COLOR_PAIR(4));
+	}
+	if (step_drain % 2) {
+		mvwaddch(stats_win, 1, 50+i++, ACS_CKBOARD|COLOR_PAIR(3));
+	}
+	mvwaddstr(stats_win, 0, 67, "Alex: ");
+	mvwaddch(stats_win, 0, 73, synth_help);
+}
+
+void CursesBoard::game_over() {
+	wattron(stats_win, A_BOLD);
+	mvwaddstr(stats_win, 0, 67, "Game Over!");
+	wattroff(stats_win, A_BOLD);
+	refresh();
+	wrefresh(board_win);
+	wrefresh(stats_win);
 }
 
 void CursesBoard::draw_board() {
-	unsigned int n = env->width() * env->height(), i, h = env->height(), x, y;
-	char *map = env->map();
+	unsigned int n = width * height, i, x, y;
 	chtype wall =	ACS_CKBOARD | COLOR_PAIR(1);
 	chtype player = ACS_CKBOARD | COLOR_PAIR(2);
 	chtype floor =	' ' | COLOR_PAIR(3);
 	werase(board_win);
-	wborder(board_win, 0, 0, 0, 0, 0, ACS_TTEE, 0, ACS_BTEE);
+	wborder(board_win, 0, 0, 0, 0, 0, 0, ACS_LTEE, ACS_RTEE);
 	for (i = 0; i < n; i++) {
-		y = ((i % h)+1)*2;
- 		x =	((i / h)+1)*2;
-		if (map[i] & 0x40) {
-			mvwaddch(board_win, y, x, ACS_DIAMOND | COLOR_PAIR(3));
-		}
-		else {
-			mvwaddch(board_win, y, x, floor);
-		}
+		y = ((i % height)+1)*2;
+		x =	((i / height)+1)*2;
+		mvwaddch(board_win, y, x, floor);
 		mvwaddch(board_win, y-1, x-1, wall);
 		if (map[i] & 0x01) { mvwaddch(board_win, y-1, x, floor); }
 		else { mvwaddch(board_win, y-1, x, wall); }
@@ -129,5 +164,9 @@ void CursesBoard::draw_board() {
 		if (map[i] & 0x08) { mvwaddch(board_win, y, x-1, floor); }
 		else { mvwaddch(board_win, y, x-1, wall); }
 	}
-	mvwaddch(board_win, (env->state()[1]+1)*2, (env->state()[0]+1)*2, player);
+	mvwaddch(board_win, ((ry)+1)*2, (rx+1)*2, ACS_DIAMOND | COLOR_PAIR(3));
+	mvwaddch(board_win, ((py)+1)*2, ((px)+1)*2, player);
+	mvwaddch(board_win, getmaxy(board_win)-1, 19, ACS_TTEE);
+	mvwaddch(board_win, getmaxy(board_win)-1, 42, ACS_TTEE);
+	mvwaddch(board_win, getmaxy(board_win)-1, 65, ACS_TTEE);
 }
