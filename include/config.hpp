@@ -17,30 +17,17 @@
  *  along with Amazed.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <vector>
-#include <iostream>
-#include <ncurses.h>
+#ifndef CONFIG_H
+#define CONFIG_H
 
-#include "board.hpp"
+// General program details
+#define PROGNAME	"amazed"
+#define PROGCANNAME "Amazed"
+#define MAJOR		0
+#define MINOR		1
+#define PATCH		0
+#define LICENSE		"GPLv3"
+#define AUTHOR		"Maxine Michalski"
+#define COPYRIGHT	"2019"
 
-#ifndef CURSESBOARD_H
-#define CURSESBOARD_H
-
-class CursesBoard : public Board {
-	public:
-		CursesBoard();
-		~CursesBoard();
-		bool capable();
-		void setup(unsigned int w, unsigned int h, std::vector<char> m);
-		void update();
-		char menu(std::vector<const char*> items);
-		void game_over();
-		char get_input();
-	private:
-		void draw_stats();
-		void draw_board();
-		WINDOW *board_win;
-		WINDOW *stats_win;
-};
-
-#endif // CURSESBOARD_H
+#endif /* CONFIG_H */

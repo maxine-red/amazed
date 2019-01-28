@@ -1,7 +1,7 @@
 PROGNAME = amazed
 OBJFILES = maze.o curses.o
 CXXFLAGS = @CXXFLAGS@
-CPPFLAGS = @CPPFLAGS@ @NCURSES_CFLAGS@ @SDL_CFLAGS@ -Iinclude -DPROGNAME="\"$(PROGNAME)\""
+CPPFLAGS = @CPPFLAGS@ @NCURSES_CFLAGS@ @SDL_CFLAGS@ -Iinclude
 TESTFLAGS = @TESTFLAGS@ -lcriterion
 LDFLAGS = @LDFLAGS@
 LXXFLAGS = @LIBS@
@@ -48,7 +48,7 @@ test: test/maze.cpp $(OBJFILES)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o bin/test $^ $(LXXFLAGS) $(TESTFLAGS)
 	@./bin/test
 
-$(PROGNAME): main.o $(OBJFILES)
+$(PROGNAME): $(OBJFILES) main.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LXXFLAGS)
 
 coverage: test
@@ -64,8 +64,8 @@ endif
 	genhtml $(PROGNAME)_filter.info --output-directory coverage
 	gcovr -x -o coverage.xml -r .
 
-%.o: %.cpp %.hpp
+%.o: %.cpp %.hpp conf.hpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ -c $<
 
-test/%.o: test/%.cpp %.hpp
+test/%.o: test/%.cpp %.hpp conf.hpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o $@ -c $<

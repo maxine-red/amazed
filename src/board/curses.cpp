@@ -1,20 +1,20 @@
 /*
  *  Copyright 2019 Maxine Michalski <maxine@furfind.net>
  *
- *  This file is part of Alex.
+ *  This file is part of Amazed.
  *
- *  Alex is free software: you can redistribute it and/or modify
+ *  Amazed is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  Alex is distributed in the hope that it will be useful,
+ *  Amazed is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with Alex.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with Amazed.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "board/curses.hpp"
@@ -76,6 +76,20 @@ void CursesBoard::update() {
 	wrefresh(stats_win);
 }
 
+char CursesBoard::menu(std::vector<const char*> items) {
+	WINDOW *menu = newwin(9,  24, 10, 10);
+	box(menu, 0, 0);
+	mvaddstr(2, 3, PROGNAME);
+	mvprintw(LINES-1, 0, "%s v%d.%d.%d (c) %s %s (%s)", PROGCANNAME, MAJOR, MINOR, PATCH, COPYRIGHT, AUTHOR, LICENSE);
+	mvwaddstr(menu, 1, 1, items[0]);
+	refresh();
+	wrefresh(menu);
+	getch();
+	endwin();
+	exit(0);
+	return 'c';
+}
+
 char CursesBoard::get_input() {
 	char input = ' ';
 	switch (getch()) {
@@ -127,7 +141,7 @@ void CursesBoard::draw_stats() {
 	if (step_drain % 2) {
 		mvwaddch(stats_win, 1, 50+i++, ACS_CKBOARD|COLOR_PAIR(3));
 	}
-	mvwaddstr(stats_win, 0, 67, "Alex: ");
+	mvwaddstr(stats_win, 0, 67, "Amazed: ");
 	mvwaddch(stats_win, 0, 73, synth_help);
 }
 
