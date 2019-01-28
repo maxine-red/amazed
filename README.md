@@ -13,11 +13,14 @@
 ## TODO
 
 ### before demo release
-- [ ] implement score system properly
+- [x] implement score system properly
+- [x] add a step counter and timer to UI
+- [ ] tweak drain rules
+- [ ] revamp UI
+- [x] implement time based drain
+- [ ] add GUI
 
 ## before official release
-- [ ] implement time based drain
-- [ ] implement SDL variant
 - [ ] implement Alex support
 
 ## Description

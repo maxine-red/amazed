@@ -1,25 +1,25 @@
-PROGNAME = alex$(PROGPREFIX)
+PROGNAME = amazed
 OBJFILES = maze.o curses.o
 CXXFLAGS = @CXXFLAGS@
-CPPFLAGS = @CPPFLAGS@ @NCURSES_CFLAGS@ -Iinclude -DPROGNAME="\"$(PROGNAME)\""
-TESTFLAGS = @TESTFLAGS@
+CPPFLAGS = @CPPFLAGS@ @NCURSES_CFLAGS@ @SDL_CFLAGS@ -Iinclude -DPROGNAME="\"$(PROGNAME)\""
+TESTFLAGS = @TESTFLAGS@ -lcriterion
 LDFLAGS = @LDFLAGS@
-LXXFLAGS = @LIBS@ @NCURSES_LIBS@
+LXXFLAGS = @LIBS@
 prefix = @prefix@
-
-ifeq ($(PROGNAME), alex.test)
-	CXXFLAGS += $(TESTFLAGS)
-	LXXFLAGS += -lcriterion
-	OBJFILES += test/maze.o
-else
-	OBJFILES += main.o
-endif
 
 VPATH = src:include
 vpath %.cpp src src/environment src/board src/synth
 vpath %.hpp include
 
 .PHONY: all clean install check-style coverage documentation test
+
+LXXFLAGS += @NCURSES_LIBS@ @SDL_LIBS@
+# Test if we are building on/for windows or not
+ifeq ($(OS),Windows_NT)
+else
+       	# add pthread support to make <thread> work
+	LXXFLAGS += -lpthread
+endif
 
 all: $(PROGNAME)
 	@mv $< bin/
@@ -44,13 +44,15 @@ friends:
 check-style:
 	@ cppcheck --enable=warning,performance,portability --platform=unix64 src/
 
-test: bin/$(PROGNAME)
-	@TERM=xterm-256color ./$<
+test: test/maze.cpp $(OBJFILES)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o bin/test $^ $(LXXFLAGS) $(TESTFLAGS)
+	@./bin/test
 
-$(PROGNAME): $(OBJFILES)
+$(PROGNAME): main.o $(OBJFILES)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LXXFLAGS)
 
 coverage: test
+	./bin/$<
 ifneq ($(CXX),g++)
 	@echo "Only g++ is supported for coverage generation!"
 	@exit 1
