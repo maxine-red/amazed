@@ -1,25 +1,19 @@
-PROGNAME = amazed
+CXX = @CXX@
+PROGNAME = amazed@EXEEXT@
 OBJFILES = maze.o curses.o
 CXXFLAGS = @CXXFLAGS@
-CPPFLAGS = @CPPFLAGS@ @NCURSES_CFLAGS@ @SDL_CFLAGS@ -Iinclude
+CPPFLAGS = @CPPFLAGS@ -Iinclude @NCURSES_CFLAGS@
 TESTFLAGS = @TESTFLAGS@ -lcriterion
 LDFLAGS = @LDFLAGS@
-LXXFLAGS = @LIBS@
+LXXFLAGS = @LIBS@ @LDFLAGS@ @NCURSES_LIBS@
 prefix = @prefix@
 
 VPATH = src:include
 vpath %.cpp src src/environment src/board src/synth
 vpath %.hpp include
 
-.PHONY: all clean install check-style coverage documentation test
+.PHONY: all clean check-style documentation
 
-LXXFLAGS += @NCURSES_LIBS@ @SDL_LIBS@
-# Test if we are building on/for windows or not
-ifeq ($(OS),Windows_NT)
-else
-       	# add pthread support to make <thread> work
-	LXXFLAGS += -lpthread
-endif
 
 all: $(PROGNAME)
 	@mv $< bin/
@@ -27,13 +21,14 @@ all: $(PROGNAME)
 documentation:
 	@doxygen .doxy.cfg
 
+
 clean:
 	@find . -name "*.test" -delete
 	@find . -name "*.o" -delete
 	@find . -name "*.gc??" -delete
 	@find . -name "*.info" -delete
 	@find . -name "*.profraw" -delete
-	@find bin/ -type f -perm -u=x -delete
+	@find . -wholename bin/$(PROGNAME) -delete
 
 love:
 	@echo '<3'
@@ -42,30 +37,10 @@ friends:
 	@echo '^-^'
 
 check-style:
-	@ cppcheck --enable=warning,performance,portability --platform=unix64 src/
-
-test: test/maze.cpp $(OBJFILES)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o bin/test $^ $(LXXFLAGS) $(TESTFLAGS)
-	@./bin/test
+	@cppcheck --enable=warning,performance,portability --platform=unix64 src/ include/
 
 $(PROGNAME): $(OBJFILES) main.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LXXFLAGS)
 
-coverage: test
-	./bin/$<
-ifneq ($(CXX),g++)
-	@echo "Only g++ is supported for coverage generation!"
-	@exit 1
-endif
-	gcov -a -u -b -c src/*
-	lcov -c --directory . -o $(PROGNAME).info
-	lcov -e $(PROGNAME).info '$(CURDIR)/*' -o $(PROGNAME)_filter.info
-	lcov --summary $(PROGNAME)_filter.info
-	genhtml $(PROGNAME)_filter.info --output-directory coverage
-	gcovr -x -o coverage.xml -r .
-
 %.o: %.cpp %.hpp conf.hpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ -c $<
-
-test/%.o: test/%.cpp %.hpp conf.hpp
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o $@ -c $<

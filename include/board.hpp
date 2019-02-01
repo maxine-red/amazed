@@ -53,30 +53,61 @@ class Board {
 		 * @return Boolean that shows if this system is capable or not
 		 */
 		virtual bool capable() = 0;
-		/** @brief Setup UI
+		/** @brief Setup game field
 		 *
-		 * A method that handles UI setup and accepts two parameters
+		 * Setups the actual gaming field.
 		 * @param[in] unsigned int w - Width of board, in tiles
 		 * @param[in] unsigned int h - Height of board, in tiles
 		 * @param[in] vector<char> m - Height of board, in tiles
 		 */
 		virtual void setup(unsigned int w, unsigned int h, std::vector<char> m) = 0;
+		/** @brief General setup
+		 *
+		 * General setup method for ncurses setups.
+		 */
+		virtual void setup() = 0;
 		/** @brief Update UI to show changes
 		 *
 		 * Updates the UI with current state changes.
 		 *
 		 */
 		virtual void update() = 0;
-		virtual char menu(std::vector<const char*> items) = 0;
+		/** @brief Main menu method
+		 *
+		 * A method to handle main menu functionality.
+		 * @param[in] items - Array of string that represent menu points
+		 * @param[in] active - char that holds the entry number of the currently
+		 * active (hovered) meny item
+		 */
+		virtual void menu(std::vector<const char*> items, unsigned char active) = 0;
+		/** @brief Menu method for settings
+		 *
+		 * An overload method for the main menu method, that has one additional
+		 * parameter to hold set/unset settings.
+		 * @param[in] set - Array of numbers with set options
+		 */
+		virtual void menu(std::vector<const char*> items, unsigned char active, std::vector<unsigned char> set) = 0;
+		/** @brief Method to render patron names in a list
+		 *
+		 * @param[in] names - List of names of patrons
+		 */
+		virtual void patrons(std::vector<const char*> names) = 0;
+		/** @brief game over rendering method */
 		virtual void game_over() = 0;
+		/** @brief Keyboard input handler method */
 		virtual char get_input() = 0;
+		/** @brief Variable to hold error messages */
 		std::string error_message;
+		/* Variables to be set for display */
 		char synth_help = ' ';
 		unsigned char px, py, rx, ry;
 		unsigned short  score;
 		unsigned int seconds, steps;
 		int energy, time_drain, step_drain;
 	protected:
+		/** @brief Special method to dispay copyright notice */
+		virtual void copy_notice() = 0;
+		/* Variables for positioning and holding game field/map data. */
 		unsigned int width, height;
 		std::vector<char> map;
 };

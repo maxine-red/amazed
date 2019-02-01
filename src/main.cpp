@@ -34,12 +34,14 @@ using namespace std;
 
 Board *board = nullptr;
 Environment *env = nullptr;
-bool run = true;
+bool run;
 mutex mtx;
-int energy = 300;
-int time_drain = 1, step_drain = 1;
-unsigned int seconds = 0, steps = 0;
-unsigned short score = 0, pos = 0;
+int energy;
+int time_drain, step_drain, time_drain_increase, step_drain_increase;
+int time_drain_counter, step_drain_counter;
+unsigned int seconds, steps;
+unsigned short score, pos;
+char maze = 'k'; // maze generation picker indicator
 
 // These are all game rule definitions and necessary to properly run Amazed
 #define MAX_ENERGY 1000
@@ -72,7 +74,7 @@ void cleanup(int sig = 0) {
 /** @brief Helper function to print 'help' information and credits */
 void print_help() {
 	cout << "Usage:" << endl
-		<< "  " << PROGNAME << " [-d] [-k] [-p] [-w]" << endl
+		<< "  " << PROGNAME << " [-d] [-k] [-p]" << endl
 		<< "     -d	Randomized Depth-First search (corridor bias)" << endl
 	   	<< "     -k	Randomized Kruskal's algorithm (dead end bias)" << endl
 	   	<< "     -p	Randomized Prim's algorithm (dead end bias)" << endl
@@ -81,9 +83,6 @@ void print_help() {
 		<< "To quit game, press 'q'" << endl
 		<< endl
 		<< "This game is made possible by my Patreons:" << endl
-		<< "arc" << endl
-		<< "Pupper! ^-^ (Ulvra)" << endl
-		<< "Jenny Koda" << endl
 		<< endl
 		<< "Please support me on my Patreon here: "
 		<< "https://www.patreon.com/maxine_red" << endl
@@ -133,7 +132,8 @@ void timer_update() {
 			clip_energy();
 			mtx.unlock();
 			if (seconds % DRAIN_INTERVAL == 0) {
-				time_drain++;
+				if (time_drain_counter++ % 5 == 0) { time_drain_increase *= 2; }
+				time_drain += time_drain_increase;
 			}
 	   	}
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -176,6 +176,11 @@ void ui_update() {
 void game_loop() {
 	char input;
 	unsigned char action = 0;
+	if (env == nullptr) {
+		env = new Maze(38, 9, maze);
+		pos = env->state();
+	}
+	board->setup(env->width(), env->height(), env->nodes());
 	// Game main loop start
 	std::thread ui_thread(ui_update);
 	std::thread timer_thread(timer_update);
@@ -196,7 +201,8 @@ void game_loop() {
 			energy -= step_drain;
 			steps++;
 			if (steps % DRAIN_STEPS == 0) {
-				step_drain++;
+				if (step_drain_counter++ % 5 == 0) { step_drain_increase *= 2; }
+				step_drain += step_drain_increase;
 			}
 			if (pos == env->reward_position()) {
 				pos = env->reset(true);
@@ -213,6 +219,38 @@ void game_loop() {
 	// Game main loop end and cleanup
 	ui_thread.join();
 	timer_thread.join();
+	delete env;
+	env = nullptr;
+}
+
+/** @brief Method to handle setting selection */
+void settings() {
+	unsigned char pick = 0;
+	char c;
+	std::vector<const char*> items = {"   Kruskal    "," Depth-First  ","     Prim     ","    Return    "};
+	std::vector<unsigned char> set;
+	switch (maze) {
+		case 'k': set.push_back(0); break;
+		case 'd': set.push_back(1); break;
+		case 'p': set.push_back(2); break;
+	}
+	while (true) {
+		board->menu(items, pick, set);
+		while ((c = board->get_input()) != 'e') {
+			switch (c) {
+				case 'u': if (pick > 0) { pick--; }; break;
+				case 'd': if (pick < items.size()-1) { pick++; }; break;
+				case 'q': return; break;
+			}
+			board->menu(items, pick, set);
+		}
+		switch(pick) {
+			case 0: set[0] = 0; maze = 'k'; break;
+			case 1: set[0] = 1; maze = 'd'; break;
+			case 2: set[0] = 2; maze = 'p'; break;
+			case 3: return; break;
+		}
+	}
 }
 
 /** @brief Main menu function
@@ -220,13 +258,39 @@ void game_loop() {
  * Handles main menu, starting and other functionality.
  */
 void main_menu() {
-	board->menu({"Start Game", "Pick Maze", "Credits"});
-	game_loop();
+	unsigned char pick = 0;
+	char c;
+	std::vector<const char*> items = {" New Game "," Settings "," Credits  ","   Exit   "};
+	while (true) {
+		board->menu(items, pick);
+		while ((c = board->get_input()) != 'e') {
+			switch (c) {
+				case 'u': if (pick > 0) { pick--; }; break;
+				case 'd': if (pick < items.size()-1) { pick++; }; break;
+				case 'q': return; break;
+			}
+			board->menu(items, pick);
+		}
+		switch(pick) {
+			case 0:
+				// reset everything to standard values
+				run = true; energy = 300;
+			   	time_drain = 1; time_drain_increase = 1; time_drain_counter = 1;
+				step_drain = 1; step_drain_increase = 1; step_drain_counter = 1;
+				seconds = 0; steps = 0; score = 0; pos = 0;
+			   	game_loop();
+			   	break;
+			case 1: settings(); break;
+			case 2:
+			   	board->patrons({"arc", "Pupper! ^-^ (Ulvra)", "Jenny Koda"});
+				break;
+			case 3: return; break;
+		}
+	}
 }
 
 int main(int argc, char *argv[]) {
 	int c;
-	char maze = 'k';
 	// register signals
 	signal(SIGSEGV, cleanup);
 	signal(SIGINT, cleanup);
@@ -248,10 +312,6 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	// end of command line parameter parsing
-	if (env == nullptr) {
-		env = new Maze(38, 9, maze);
-		pos = env->state();
-	}
 	if (board == nullptr) {
 		board = new CursesBoard();
 	}
@@ -260,7 +320,7 @@ int main(int argc, char *argv[]) {
 		cleanup();
 		exit(1);
 	}
-	board->setup(env->width(), env->height(), env->nodes());
+	board->setup();
 	main_menu();
 	cleanup();
 	return 0;

@@ -17,9 +17,9 @@
  *  along with Amazed.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "board/curses.hpp"
+#include <cstring>
 
-using namespace std;
+#include "board/curses.hpp"
 
 CursesBoard::CursesBoard() {
 	initscr();
@@ -47,8 +47,7 @@ bool CursesBoard::capable() {
 	return true;
 }
 
-void CursesBoard::setup(unsigned int w, unsigned int h, std::vector<char> m) {
-	width = w; height = h; map = m;
+void CursesBoard::setup() {
 	cbreak();
 	noecho();
 	curs_set(0);
@@ -63,10 +62,15 @@ void CursesBoard::setup(unsigned int w, unsigned int h, std::vector<char> m) {
 	init_pair(2, COLOR_BLUE, COLOR_BLUE);
 	init_pair(3, COLOR_WHITE, COLOR_BLACK);
 	init_pair(4, COLOR_WHITE, COLOR_WHITE);
-	board_win = newwin(height*2+3,  width*2+3, 0, 0);
-	stats_win = newwin(24-(height*2+3),  (width*2+3), height*2+3, 0);
 }
 
+void CursesBoard::setup(unsigned int w, unsigned int h, std::vector<char> m) {
+	width = w; height = h; map = m;
+	board_win = newwin(height*2+3,  width*2+3, 0, 0);
+	stats_win = newwin(24-(height*2+3),  (width*2+3), height*2+3, 0);
+	clear();
+	refresh();
+}
 
 void CursesBoard::update() {
 	draw_stats();
@@ -75,19 +79,61 @@ void CursesBoard::update() {
 	wrefresh(board_win);
 	wrefresh(stats_win);
 }
-
-char CursesBoard::menu(std::vector<const char*> items) {
-	WINDOW *menu = newwin(9,  24, 10, 10);
+void CursesBoard::menu(std::vector<const char*> items, unsigned char active, 
+		std::vector<unsigned char> set) {
+	clear();
+	refresh();
+	WINDOW *menu = newwin(items.size()+2,  strlen(items[0])+5,
+		   	(LINES/2-items.size()/2), COLS/2-(strlen(items[0])/2));
+	unsigned int i;
 	box(menu, 0, 0);
-	mvaddstr(2, 3, PROGNAME);
-	mvprintw(LINES-1, 0, "%s v%d.%d.%d (c) %s %s (%s)", PROGCANNAME, MAJOR, MINOR, PATCH, COPYRIGHT, AUTHOR, LICENSE);
-	mvwaddstr(menu, 1, 1, items[0]);
+	copy_notice();
+	for (i = 0; i < items.size(); i++) {
+		if (i == active) { wattron(menu, A_REVERSE); }
+		mvwaddstr(menu, i+1, 2, items[i]);
+		if (i == set[0]) { mvwaddch(menu, i+1, 16, ACS_DIAMOND); }
+		else { mvwaddch(menu, i+1, 16, ' '); }
+		if (i == active) { wattroff(menu, A_REVERSE); }
+	}
 	refresh();
 	wrefresh(menu);
+}
+
+void CursesBoard::menu(std::vector<const char*> items, unsigned char active) {
+	clear();
+	refresh();
+	WINDOW *menu = newwin(items.size()+2,  strlen(items[0])+4,
+		   	(LINES/2-items.size()/2), COLS/2-6);
+	unsigned int i;
+	box(menu, 0, 0);
+	copy_notice();
+	for (i = 0; i < items.size(); i++) {
+		if (i == active) { wattron(menu, A_REVERSE); }
+		mvwaddstr(menu, i+1, 2, items[i]);
+		if (i == active) { wattroff(menu, A_REVERSE); }
+	}
+	refresh();
+	wrefresh(menu);
+}
+
+void CursesBoard::patrons(std::vector<const char*> names) {
+	unsigned int size = 0, i;
+	for (i = 0; i < names.size(); i++) {
+		if (size < strlen(names[i])) { size = strlen(names[i]); }
+	}
+	clear();
+	refresh();
+	WINDOW *patrons = newwin(22,  size+4,
+		   	1, COLS/2-size/2);
+	box(patrons, 0, 0);
+	mvaddstr(0, 5, "These people helped me create this game, by their support as a patron!");
+	copy_notice();
+	for (i = 0; i < names.size(); i++) {
+		mvwaddstr(patrons, i+1, 2, names[i]);
+	}
+	refresh();
+	wrefresh(patrons);
 	getch();
-	endwin();
-	exit(0);
-	return 'c';
 }
 
 char CursesBoard::get_input() {
@@ -98,6 +144,10 @@ char CursesBoard::get_input() {
 		case KEY_DOWN:	input = 'd'; break;
 		case KEY_LEFT:	input = 'l'; break;
 		case 'q':		input = 'q'; break;
+		case KEY_ENTER: input = 'e'; break;
+		case '\n':		input = 'e'; break;
+		case '\r':		input = 'e'; break;
+		case ' ':		input = 'e'; break;
 	}
 	return input;
 }
@@ -141,7 +191,7 @@ void CursesBoard::draw_stats() {
 	if (step_drain % 2) {
 		mvwaddch(stats_win, 1, 50+i++, ACS_CKBOARD|COLOR_PAIR(3));
 	}
-	mvwaddstr(stats_win, 0, 67, "Amazed: ");
+	mvwaddstr(stats_win, 0, 67, "Alex: ");
 	mvwaddch(stats_win, 0, 73, synth_help);
 }
 

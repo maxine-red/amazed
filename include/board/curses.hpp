@@ -19,25 +19,48 @@
 
 #include <vector>
 #include <iostream>
-#include <ncurses.h>
+#ifdef WINDOWS
+	#include <curses.h>
+#else
+	#include <ncurses.h>
+#endif
 
 #include "board.hpp"
 
 #ifndef CURSESBOARD_H
 #define CURSESBOARD_H
-
+/** @class CursesBoard
+ *
+ * @brief Curses bases user interface.
+ *
+ * This class covers the curses based User Interface.
+ */
 class CursesBoard : public Board {
 	public:
+		/** @brief Curses initializer, that calls initscr() internally. */
 		CursesBoard();
+		/** @brief Desconstructor, that calls endwin() internally */
 		~CursesBoard();
+		/** @see Board for more information on any method */
 		bool capable();
+		void setup();
 		void setup(unsigned int w, unsigned int h, std::vector<char> m);
 		void update();
-		char menu(std::vector<const char*> items);
+		void menu(std::vector<const char*> items, unsigned char active);
+		void menu(std::vector<const char*> items, unsigned char active, std::vector<unsigned char> set);
+		void patrons(std::vector<const char*> names);
 		void game_over();
 		char get_input();
+	protected:
+		void copy_notice() {
+			mvprintw(LINES-2, 0, "%s v%d.%d.%d (c) %s %s (%s)", PROGCANNAME,
+				   	MAJOR, MINOR, PATCH, COPYRIGHT, AUTHOR, LICENSE);
+			mvaddstr(LINES-1, 0, "Key bindings: arrow keys - movement, q - exit (to main menu), enter - pick item");
+	   	};
 	private:
+		/** @brief Method to handle statistics drawing */
 		void draw_stats();
+		/** @brief Method to handle game field drawing */
 		void draw_board();
 		WINDOW *board_win;
 		WINDOW *stats_win;
